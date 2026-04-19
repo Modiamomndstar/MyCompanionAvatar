@@ -11,6 +11,7 @@ const ChatRoom = lazy(() => import("./pages/ChatRoom"));
 const Profile = lazy(() => import("./pages/Profile"));
 const CharacterDetail = lazy(() => import("./pages/CharacterDetail"));
 const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function LoadingFallback() {
@@ -42,6 +43,7 @@ export default function App() {
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route
           path="/*"
           element={

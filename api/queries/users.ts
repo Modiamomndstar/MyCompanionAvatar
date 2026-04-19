@@ -13,6 +13,24 @@ export async function findUserByUnionId(unionId: string) {
   return rows.at(0);
 }
 
+export async function findUserById(id: number) {
+  const rows = await getDb()
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, id))
+    .limit(1);
+  return rows.at(0);
+}
+
+export async function findUserByEmail(email: string) {
+  const rows = await getDb()
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.email, email))
+    .limit(1);
+  return rows.at(0);
+}
+
 export async function upsertUser(data: InsertUser) {
   const updateSet: Partial<InsertUser> = {
     lastSignInAt: new Date(),
@@ -20,7 +38,6 @@ export async function upsertUser(data: InsertUser) {
   };
 
   // Ensure new users get 10 starting credits
-  // (We use a simple check: if we're inserting for the first time, use 10)
   const values = { 
     credits: 10,
     ...data,
@@ -28,8 +45,8 @@ export async function upsertUser(data: InsertUser) {
 
   if (
     values.role === undefined &&
-    values.unionId &&
-    values.unionId === env.ownerUnionId
+    values.email &&
+    values.email === env.ownerEmail
   ) {
     values.role = "admin";
     updateSet.role = "admin";
@@ -41,8 +58,6 @@ export async function upsertUser(data: InsertUser) {
     .onDuplicateKeyUpdate({ 
       set: {
         ...updateSet,
-        // Crucial: We DON'T overwrite credits during an upsert
-        // (unless we specifically want to, which we don't here)
         credits: sql`${schema.users.credits}`
       } 
     });
