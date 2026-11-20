@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Mail, Lock, User, ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -8,6 +7,7 @@ import { toast } from "sonner";
 
 export default function Register() {
   const navigate = useNavigate();
+  const utils = trpc.useUtils();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -15,7 +15,8 @@ export default function Register() {
   });
 
   const register = trpc.auth.register.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
       toast.success("Account created successfully!");
       navigate("/");
     },
@@ -26,8 +27,8 @@ export default function Register() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (formData.password.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
     register.mutate(formData);
@@ -36,8 +37,9 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-black flex flex-col">
       {/* Header */}
-      <div className="px-6 pt-12 flex flex-col items-center">
-        <button 
+      <div className="px-6 pt-12 flex flex-col items-center max-w-sm mx-auto w-full">
+        <button
+          type="button"
           onClick={() => navigate(-1)}
           className="self-start mb-6 p-2 rounded-full bg-[#1C1C1E] text-gray-400 active:scale-95 transition-transform"
         >
@@ -49,8 +51,8 @@ export default function Register() {
         </div>
 
         <h1 className="text-2xl font-bold text-center mb-2">Create Account</h1>
-        <p className="text-gray-500 text-center text-sm mb-8 px-8">
-          Join My AI ChatCompanion and start your journey today.
+        <p className="text-gray-500 text-center text-sm mb-8 px-4">
+          Join MyCompanionAvatar and start your journey today.
         </p>
       </div>
 
@@ -59,38 +61,57 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto">
           <div className="space-y-4">
             <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+              <User
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                size={18}
+              />
               <input
                 type="text"
                 required
+                autoComplete="name"
                 placeholder="Full Name"
                 className="w-full bg-[#1C1C1E] border border-white/5 rounded-2xl px-12 py-3.5 text-sm text-white placeholder-gray-600 outline-none focus:border-purple-500 transition-colors"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
               />
             </div>
 
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+              <Mail
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                size={18}
+              />
               <input
                 type="email"
                 required
+                autoComplete="email"
                 placeholder="Email Address"
                 className="w-full bg-[#1C1C1E] border border-white/5 rounded-2xl px-12 py-3.5 text-sm text-white placeholder-gray-600 outline-none focus:border-purple-500 transition-colors"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
               />
             </div>
 
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+              <Lock
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                size={18}
+              />
               <input
                 type="password"
                 required
-                placeholder="Password"
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="Password (min. 8 characters)"
                 className="w-full bg-[#1C1C1E] border border-white/5 rounded-2xl px-12 py-3.5 text-sm text-white placeholder-gray-600 outline-none focus:border-purple-500 transition-colors"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
               />
             </div>
           </div>
@@ -103,9 +124,13 @@ export default function Register() {
             >
               {register.isPending ? "Creating Account..." : "Register Now"}
             </Button>
-            
+
             <p className="text-center text-xs text-gray-500 mt-6 px-4">
-              New accounts receive <span className="text-purple-400 font-semibold">10 FREE credits</span> to start chatting.
+              New accounts receive{" "}
+              <span className="text-purple-400 font-semibold">
+                10 FREE credits
+              </span>{" "}
+              to start chatting.
             </p>
           </div>
         </form>
@@ -113,11 +138,13 @@ export default function Register() {
 
       {/* Footer */}
       <div className="px-6 pb-12 pt-4 flex justify-center">
-        <button 
+        <button
+          type="button"
           onClick={() => navigate("/login")}
           className="text-sm text-gray-400"
         >
-          Already have an account? <span className="text-purple-400 font-semibold">Sign In</span>
+          Already have an account?{" "}
+          <span className="text-purple-400 font-semibold">Sign In</span>
         </button>
       </div>
     </div>

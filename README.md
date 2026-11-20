@@ -1,73 +1,62 @@
-# React + TypeScript + Vite
+# MyCompanionAvatar
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An AI companion avatar platform built with **React 19, Vite, Tailwind CSS, Hono, tRPC, Drizzle ORM, and MySQL** — architected for both **Web** and **Mobile (iOS & Android)**.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Web Frontend:** React 19, TypeScript, Vite 7, Tailwind CSS, shadcn/ui, React Router 7, TanStack Query + tRPC
+- **Backend API:** Hono + tRPC v11 (`api/`) with dual Cookie + Bearer JWT authentication (web & mobile ready)
+- **Database:** MySQL 8 + Drizzle ORM (`db/schema.ts`, `db/relations.ts`)
+- **Validation & Contracts:** Shared Zod & TypeScript contracts (`contracts/`)
 
-## React Compiler
+## Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. Environment Setup
+```bash
+cp .env.example .env
+# Fill in DATABASE_URL, JWT_SECRET, and OPENAI_API_KEY
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Start Local MySQL
+```bash
+docker compose up -d
 ```
+
+### 3. Push Schema & Seed Data
+```bash
+npm install
+npm run db:push
+npx tsx db/seed.ts
+```
+
+### 4. Run Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000).
+
+## Available Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start Vite + Hono API dev server on port 3000 |
+| `npm run check` | Run strict TypeScript project typecheck (`tsc -b`) |
+| `npm run lint` | Run ESLint across frontend, API, and contracts |
+| `npm test` | Run Vitest unit tests |
+| `npm run build` | Build production web bundle + Node ESM API server |
+| `npm start` | Start production server (`dist/boot.js`) |
+| `npm run db:generate` | Generate Drizzle SQL migrations |
+| `npm run db:migrate` | Apply Drizzle SQL migrations |
+
+## Production & Mobile Roadmap
+
+- [x] Rebranded to **MyCompanionAvatar**
+- [x] Dual Cookie + `Authorization: Bearer` JWT auth (mobile-ready)
+- [x] Atomic credit deduction with automatic refund on AI failure
+- [x] Health check (`/api/health`), CORS, security headers, and rate limiting
+- [x] Responsive desktop sidebar + mobile bottom navigation
+- [x] Account deletion endpoint (App Store / Google Play / GDPR compliance)
+- [ ] S3 / Cloudflare R2 presigned avatar & generated image uploads
+- [ ] Streaming LLM responses (SSE) + Replicate image generation worker
+- [ ] Web payments (Stripe / Paystack) + Mobile IAP (RevenueCat)
+- [ ] Mobile app (`apps/mobile` via Expo / React Native or Capacitor)

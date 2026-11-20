@@ -1,6 +1,7 @@
-interface RequestConfig extends RequestInit {
+interface RequestConfig extends Omit<RequestInit, "body"> {
   baseUrl?: string;
   params?: Record<string, string | number>;
+  body?: unknown;
   timeout?: number;
 }
 
@@ -29,7 +30,7 @@ export class HttpClient {
     const url = new URL(`${this.baseUrl}${endpoint}`);
     if (params) {
       Object.entries(params).forEach(([key, value]) =>
-        url.searchParams.append(key, value.toString()),
+        url.searchParams.append(key, value.toString())
       );
     }
 
@@ -41,7 +42,7 @@ export class HttpClient {
         ...rest,
         method,
         headers: { ...this.defaultHeaders, ...headers },
-        body: body ? JSON.stringify(body) : undefined,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
 
@@ -55,8 +56,9 @@ export class HttpClient {
       }
 
       return (await response.json()) as T;
-    } catch (error: any) {
-      if (error.name === "AbortError") {
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
         throw new Error("Request timeout");
       }
       throw error;
@@ -66,12 +68,12 @@ export class HttpClient {
   get<T>(
     url: string,
     params?: RequestConfig["params"],
-    config?: RequestConfig,
+    config?: RequestConfig
   ) {
     return this.request<T>(url, { ...config, method: "GET", params });
   }
 
-  post<T>(url: string, body?: any, config?: RequestConfig) {
+  post<T>(url: string, body?: unknown, config?: RequestConfig) {
     return this.request<T>(url, { ...config, method: "POST", body });
   }
 }

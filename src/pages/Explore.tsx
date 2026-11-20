@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { trpc } from "@/providers/trpc";
-import { Search, SlidersHorizontal, MessageSquare } from "lucide-react";
+import { CHARACTER_CATEGORIES } from "@contracts/constants";
+import { Search, MessageSquare, X } from "lucide-react";
 
-const categories = ["All", "Fantasy", "Sci-Fi", "Anime", "Mystic", "Wisdom", "Cyberpunk"];
+const categories = ["All", ...CHARACTER_CATEGORIES] as const;
 
 function formatCount(num: number): string {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
@@ -13,22 +14,24 @@ function formatCount(num: number): string {
 export default function Explore() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeCategory, setActiveCategory] = useState<string>("All");
+
+  const isFiltered = searchQuery.trim().length > 0 || activeCategory !== "All";
 
   const { data: searchResults, isLoading: searching } =
     trpc.character.search.useQuery(
-      { query: searchQuery || activeCategory === "All" ? "" : activeCategory },
-      { enabled: searchQuery.length > 0 || activeCategory !== "All" }
+      {
+        query: searchQuery.trim(),
+        category: activeCategory === "All" ? undefined : activeCategory,
+      },
+      { enabled: isFiltered }
     );
 
   const { data: allCharacters, isLoading: loadingAll } =
-    trpc.character.list.useQuery();
+    trpc.character.list.useQuery(undefined, { enabled: !isFiltered });
 
-  const characters = searchQuery || activeCategory !== "All"
-    ? searchResults
-    : allCharacters;
-
-  const isLoading = searching || loadingAll;
+  const characters = isFiltered ? searchResults : allCharacters;
+  const isLoading = isFiltered ? searching : loadingAll;
 
   return (
     <div className="min-h-full bg-black pb-4">
@@ -44,13 +47,20 @@ export default function Explore() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search characters..."
+              placeholder="Search companions..."
               className="bg-transparent text-sm text-white placeholder-gray-500 outline-none w-full"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-gray-500 hover:text-white"
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
-          <button className="p-2.5 rounded-xl bg-[#1C1C1E] active:bg-[#2C2C2E] transition-colors">
-            <SlidersHorizontal size={18} className="text-gray-400" />
-          </button>
         </div>
 
         {/* Category pills */}
@@ -78,7 +88,7 @@ export default function Explore() {
             <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
           </div>
         ) : characters && characters.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {characters.map((char) => (
               <button
                 key={char.id}
@@ -98,7 +108,9 @@ export default function Explore() {
                   </div>
                 </div>
                 <div className="p-3">
-                  <h3 className="font-semibold text-sm">{char.name}</h3>
+                  <h3 className="font-semibold text-sm truncate">
+                    {char.name}
+                  </h3>
                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
                     {char.description}
                   </p>
@@ -114,9 +126,9 @@ export default function Explore() {
           </div>
         ) : (
           <div className="text-center py-20">
-            <p className="text-gray-500">No characters found</p>
+            <p className="text-gray-500">No companions found</p>
             <p className="text-gray-600 text-sm mt-1">
-              Try a different search term
+              Try a different search term or category
             </p>
           </div>
         )}

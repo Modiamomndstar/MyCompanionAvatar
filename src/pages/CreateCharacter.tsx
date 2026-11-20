@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { ArrowLeft, Camera, Check, ChevronRight } from "lucide-react";
 
-const categories = ["Fantasy", "Sci-Fi", "Anime", "Mystic", "Wisdom", "Cyberpunk", "Romance", "Horror"];
+const categories = ["Romance", "Social", "Business", "Religious", "Counseling", "Productivity", "Anime", "Fantasy"];
 
 export default function CreateCharacter() {
   const navigate = useNavigate();
@@ -14,8 +14,9 @@ export default function CreateCharacter() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [personality, setPersonality] = useState("");
-  const [category, setCategory] = useState("Fantasy");
+  const [category, setCategory] = useState("Romance");
   const [greeting, setGreeting] = useState("");
+  const [physicalDescription, setPhysicalDescription] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,6 +71,7 @@ export default function CreateCharacter() {
       personality: personality.trim(),
       category,
       greeting: greeting.trim() || undefined,
+      physicalDescription: physicalDescription.trim() || undefined,
       isPublic,
     });
   };
@@ -230,6 +232,23 @@ export default function CreateCharacter() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Physical Appearance */}
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">
+                Visual Appearance (for image sharing)
+              </label>
+              <textarea
+                value={physicalDescription}
+                onChange={(e) => setPhysicalDescription(e.target.value)}
+                placeholder="Describe how they look: hair color, eyes, signature clothing..."
+                rows={3}
+                className="w-full px-4 py-3 rounded-xl bg-[#1C1C1E] text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-purple-500/50 transition-all resize-none"
+              />
+              <p className="text-[10px] text-gray-600 mt-1">
+                This helps the AI generate consistent photos of itself in chat.
+              </p>
             </div>
           </div>
         )}

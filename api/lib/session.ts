@@ -16,11 +16,19 @@ export async function signSessionToken(payload: SessionPayload): Promise<string>
     .sign(SECRET);
 }
 
-export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
+export async function verifySessionToken(
+  token: string
+): Promise<SessionPayload | null> {
   try {
     const { payload } = await jose.jwtVerify(token, SECRET);
-    return payload as SessionPayload;
-  } catch (err) {
+    if (
+      typeof payload.userId === "number" &&
+      typeof payload.email === "string"
+    ) {
+      return { userId: payload.userId, email: payload.email };
+    }
+    return null;
+  } catch {
     return null;
   }
 }

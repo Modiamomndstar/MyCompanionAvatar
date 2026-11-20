@@ -1,8 +1,14 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
-import type { InsertUser } from "@db/schema";
+import type { InsertUser, SafeUser, User } from "@db/schema";
 import { getDb } from "./connection";
 import { env } from "../lib/env";
+
+export function toSafeUser(user: User): SafeUser {
+  const { passwordHash: _omitted, ...safe } = user;
+  void _omitted;
+  return safe;
+}
 
 export async function findUserByUnionId(unionId: string) {
   const rows = await getDb()
@@ -23,10 +29,11 @@ export async function findUserById(id: number) {
 }
 
 export async function findUserByEmail(email: string) {
+  const normalized = email.trim().toLowerCase();
   const rows = await getDb()
     .select()
     .from(schema.users)
-    .where(eq(schema.users.email, email))
+    .where(eq(schema.users.email, normalized))
     .limit(1);
   return rows.at(0);
 }
@@ -37,8 +44,7 @@ export async function upsertUser(data: InsertUser) {
     ...data,
   };
 
-  // Ensure new users get 10 starting credits
-  const values = { 
+  const values = {
     credits: 10,
     ...data,
   };
@@ -46,7 +52,7 @@ export async function upsertUser(data: InsertUser) {
   if (
     values.role === undefined &&
     values.email &&
-    values.email === env.ownerEmail
+    values.email.trim().toLowerCase() === env.ownerEmail
   ) {
     values.role = "admin";
     updateSet.role = "admin";
@@ -55,10 +61,10 @@ export async function upsertUser(data: InsertUser) {
   await getDb()
     .insert(schema.users)
     .values(values)
-    .onDuplicateKeyUpdate({ 
+    .onDuplicateKeyUpdate({
       set: {
         ...updateSet,
-        credits: sql`${schema.users.credits}`
-      } 
+        credits: sql`${schema.users.credits}`,
+      },
     });
 }

@@ -1,31 +1,43 @@
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
-import type { User } from "@db/schema";
+import type { SafeUser } from "@db/schema";
 import * as cookie from "cookie";
 import { Session } from "@contracts/constants";
 import { verifySessionToken } from "./lib/session";
-import { findUserById } from "./queries/users";
+import { findUserById, toSafeUser } from "./queries/users";
 
 export type TrpcContext = {
   req: Request;
   resHeaders: Headers;
-  user?: User;
+  user?: SafeUser;
 };
 
+function extractToken(req: Request): string | undefined {
+  // 1. Mobile / API clients: Authorization: Bearer <token>
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const bearer = authHeader.slice(7).trim();
+    if (bearer) return bearer;
+  }
+
+  // 2. Web clients: httpOnly session cookie
+  const cookies = cookie.parse(req.headers.get("cookie") || "");
+  return cookies[Session.cookieName];
+}
+
 export async function createContext(
-  opts: FetchCreateContextFnOptions,
+  opts: FetchCreateContextFnOptions
 ): Promise<TrpcContext> {
   const ctx: TrpcContext = { req: opts.req, resHeaders: opts.resHeaders };
-  
+
   try {
-    const cookies = cookie.parse(opts.req.headers.get("cookie") || "");
-    const token = cookies[Session.cookieName];
+    const token = extractToken(opts.req);
 
     if (token) {
       const payload = await verifySessionToken(token);
       if (payload) {
         const user = await findUserById(payload.userId);
         if (user) {
-          ctx.user = user;
+          ctx.user = toSafeUser(user);
         }
       }
     }

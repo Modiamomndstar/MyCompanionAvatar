@@ -1,20 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import { trpc } from "@/providers/trpc";
-import {
-  ArrowLeft,
-  MoreVertical,
-  Send,
-  Mic,
-  ImagePlus,
-} from "lucide-react";
-
+import { ArrowLeft, MoreVertical, Send, Mic, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 
 interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  metadata?: {
+    imageUrl?: string;
+    imagePrompt?: string;
+    type?: "text" | "image";
+  } | null;
   createdAt: Date;
 }
 
@@ -29,52 +27,52 @@ export default function ChatRoom() {
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
+  const utils = trpc.useUtils();
+
   const { data: conversation, isLoading: convoLoading } =
     trpc.conversation.getById.useQuery(
       { id: convoId },
-      { enabled: !!convoId }
+      { enabled: Number.isFinite(convoId) && convoId > 0 }
     );
 
   const { data: serverMessages, isLoading: messagesLoading } =
     trpc.message.list.useQuery(
       { conversationId: convoId },
-      { enabled: !!convoId, refetchInterval: 5000 }
+      { enabled: Number.isFinite(convoId) && convoId > 0, refetchInterval: 10000 }
     );
 
   const sendMessageMutation = trpc.message.send.useMutation();
   const getAIResponse = trpc.message.getAIResponse.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       utils.message.list.invalidate({ conversationId: convoId });
-      utils.auth.me.invalidate(); // Refresh credits
+      utils.auth.me.invalidate();
     },
     onError: (error) => {
       if (error.message.includes("INSUFFICIENT_CREDITS")) {
-        toast.error("Not enough credits to send message!");
+        toast.error("Not enough credits to send a message!");
       } else {
-        toast.error("AI is busy right now. Try again later.");
+        toast.error(error.message || "AI is busy right now. Try again later.");
       }
-    }
+    },
   });
 
-  const utils = trpc.useUtils();
-
-  // Sync server messages to local
   useEffect(() => {
     if (serverMessages) {
       setLocalMessages(serverMessages);
     }
   }, [serverMessages]);
 
-  // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [localMessages, isTyping]);
 
-  // Auto resize textarea
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
-      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
+      inputRef.current.style.height = `${Math.min(
+        inputRef.current.scrollHeight,
+        120
+      )}px`;
     }
   }, [inputText]);
 
@@ -84,9 +82,9 @@ export default function ChatRoom() {
     const userContent = inputText.trim();
     setInputText("");
 
-    // Optimistically add user message
+    const tempId = Date.now();
     const tempUserMsg: ChatMessage = {
-      id: Date.now(),
+      id: tempId,
       role: "user",
       content: userContent,
       createdAt: new Date(),
@@ -95,21 +93,18 @@ export default function ChatRoom() {
     setIsTyping(true);
 
     try {
-      // Send user message to server
       await sendMessageMutation.mutateAsync({
         conversationId: convoId,
         content: userContent,
       });
 
-      // Request AI response (backend handles credits and generation)
       await getAIResponse.mutateAsync({
         conversationId: convoId,
       });
 
-      // Refresh messages
       utils.message.list.invalidate({ conversationId: convoId });
-    } catch (error) {
-      console.error("Error sending message:", error);
+    } catch {
+      setLocalMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
       setIsTyping(false);
     }
@@ -151,6 +146,7 @@ export default function ChatRoom() {
         <button
           onClick={() => navigate("/chats")}
           className="w-10 h-10 flex items-center justify-center active:opacity-70"
+          aria-label="Back to chats"
         >
           <ArrowLeft size={22} className="text-white" />
         </button>
@@ -170,7 +166,15 @@ export default function ChatRoom() {
           </p>
         </div>
 
-        <button className="w-10 h-10 flex items-center justify-center active:opacity-70">
+        <button
+          type="button"
+          onClick={() =>
+            conversation.character &&
+            navigate(`/character/${conversation.character.id}`)
+          }
+          className="w-10 h-10 flex items-center justify-center active:opacity-70"
+          aria-label="Companion details"
+        >
           <MoreVertical size={20} className="text-gray-400" />
         </button>
       </div>
@@ -200,6 +204,16 @@ export default function ChatRoom() {
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.content}</p>
+                {msg.metadata?.imageUrl && (
+                  <div className="mt-2 rounded-xl overflow-hidden border border-white/10">
+                    <img
+                      src={msg.metadata.imageUrl}
+                      alt="AI generated"
+                      className="w-full h-auto object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -228,7 +242,12 @@ export default function ChatRoom() {
       {/* Input Area */}
       <div className="shrink-0 px-4 py-3 border-t border-white/10 bg-black/95 backdrop-blur-sm">
         <div className="flex items-end gap-2">
-          <button className="w-10 h-10 flex items-center justify-center shrink-0 active:opacity-70">
+          <button
+            type="button"
+            onClick={() => toast.info("Image sharing coming soon!")}
+            className="w-10 h-10 flex items-center justify-center shrink-0 active:opacity-70"
+            aria-label="Send image"
+          >
             <ImagePlus size={22} className="text-gray-400" />
           </button>
 
@@ -246,14 +265,21 @@ export default function ChatRoom() {
 
           {inputText.trim() ? (
             <button
+              type="button"
               onClick={handleSend}
               disabled={isTyping}
               className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center shrink-0 active:scale-95 transition-transform disabled:opacity-50"
+              aria-label="Send message"
             >
               <Send size={18} className="text-white" />
             </button>
           ) : (
-            <button className="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center shrink-0 active:scale-95 transition-transform">
+            <button
+              type="button"
+              onClick={() => toast.info("Voice messages coming soon!")}
+              className="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+              aria-label="Voice message"
+            >
               <Mic size={20} className="text-gray-400" />
             </button>
           )}
@@ -261,15 +287,4 @@ export default function ChatRoom() {
       </div>
     </div>
   );
-}
-
-function getFallbackResponse(_charName: string): string {
-  const fallbacks = [
-    `That's really interesting! Tell me more about how you feel about that.`,
-    `I love hearing your thoughts. What else is on your mind?`,
-    `You know, I was just thinking about something similar. Go on...`,
-    `*smiles warmly* I'm really enjoying our conversation. Please continue.`,
-    `That's fascinating! I never thought about it that way before.`,
-  ];
-  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
